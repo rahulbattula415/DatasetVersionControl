@@ -18,22 +18,17 @@ func CreateDatasetHandler(pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req CreateDatasetRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "invalid request body", http.StatusBadRequest)
+			httpError(w, "invalid request body", http.StatusBadRequest)
 			return
 		}
-
-		// Validation
 		if strings.TrimSpace(req.Name) == "" {
-			http.Error(w, "name is required", http.StatusBadRequest)
+			httpError(w, "name is required", http.StatusBadRequest)
 			return
 		}
 		if strings.TrimSpace(req.PrimaryKeyCol) == "" {
-			http.Error(w, "primary_key_col is required", http.StatusBadRequest)
+			httpError(w, "primary_key_col is required", http.StatusBadRequest)
 			return
 		}
-
-		// Hardcode a system user UUID for now, swap for auth middleware later
-		const systemUser = "00000000-0000-0000-0000-000000000001"
 
 		dataset, err := db.CreateDataset(r.Context(), pool, db.CreateDatasetParams{
 			Name:          req.Name,
@@ -41,12 +36,42 @@ func CreateDatasetHandler(pool *pgxpool.Pool) http.HandlerFunc {
 			CreatedBy:     systemUser,
 		})
 		if err != nil {
-			http.Error(w, "failed to create dataset", http.StatusInternalServerError)
+			httpError(w, "failed to create dataset", http.StatusInternalServerError)
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(dataset)
+		// Auto-create main branch with no head
+		if _, err := db.CreateBranch(r.Context(), pool, dataset.ID, "main", nil); err != nil {
+			httpError(w, "failed to create main branch", http.StatusInternalServerError)
+			return
+		}
+
+		jsonResponse(w, http.StatusCreated, dataset)
+	}
+}
+
+func GetDatasetHandler(pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		dataset, err := db.GetDataset(r.Context(), pool, id)
+		if err != nil {
+			httpError(w, "dataset not found", http.StatusNotFound)
+			return
+		}
+		jsonResponse(w, http.StatusOK, dataset)
+	}
+}
+
+func ListDatasetsHandler(pool *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		datasets, err := db.ListDatasets(r.Context(), pool)
+		if err != nil {
+			httpError(w, "failed to list datasets", http.StatusInternalServerError)
+			return
+		}
+		if datasets == nil {
+			datasets = []db.DatasetSummary{}
+		}
+		jsonResponse(w, http.StatusOK, datasets)
 	}
 }

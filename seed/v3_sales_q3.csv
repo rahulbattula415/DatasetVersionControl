@@ -1,0 +1,14 @@
+id,region,product,revenue,units_sold,margin_pct
+1,North,Widget A,15200,380,0.35
+2,North,Widget B,8800,176,0.29
+3,South,Widget A,24500,612,0.39
+4,South,Widget C,4800,96,0.19
+6,East,Widget A,11200,280,0.34
+7,West,Widget C,7100,142,0.24
+8,West,Widget D,2900,58,0.16
+9,North,Widget C,6200,124,0.25
+10,South,Widget D,11400,228,0.30
+11,East,Widget E,18600,372,0.41
+12,West,Widget E,10300,206,0.38
+13,North,Widget F,5500,110,0.27
+14,South,Widget F,7200,144,0.29
