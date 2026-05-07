@@ -8,7 +8,7 @@ import type {
 } from './types';
 
 import { PUBLIC_API_BASE } from '$env/static/public';
-const BASE = PUBLIC_API_BASE || 'http://localhost:8080';
+const BASE = (PUBLIC_API_BASE || 'http://localhost:8080').replace(/\/$/, '');
 
 export const token = {
 	get: (): string | null => (typeof localStorage !== 'undefined' ? localStorage.getItem('jwt') : null),

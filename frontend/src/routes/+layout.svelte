@@ -9,14 +9,12 @@
 
 	const publicPaths = ['/login', '/register'];
 	let userEmail = $state('');
-	let ready = $state(false);
 
 	onMount(() => {
 		userEmail = token.email() ?? '';
-		if (!token.get() && !publicPaths.includes($page.url.pathname)) {
+		const path = window.location.pathname;
+		if (!token.get() && !publicPaths.includes(path)) {
 			goto('/login');
-		} else {
-			ready = true;
 		}
 	});
 
@@ -60,8 +58,6 @@
 	</header>
 
 	<main class="mx-auto max-w-7xl px-6 py-8">
-		{#if ready || publicPaths.includes($page.url.pathname)}
-			{@render children()}
-		{/if}
+		{@render children()}
 	</main>
 </div>
