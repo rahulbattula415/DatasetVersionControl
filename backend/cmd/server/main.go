@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/rahulbattula415/DatasetVersionControl/internal/db"
 	"github.com/rahulbattula415/DatasetVersionControl/internal/handler"
 	"github.com/rahulbattula415/DatasetVersionControl/internal/middleware"
 )
@@ -26,11 +27,14 @@ func main() {
 	if err := pool.Ping(ctx); err != nil {
 		log.Fatalf("database ping failed: %v", err)
 	}
+	if err := db.RunMigrations(ctx, pool); err != nil {
+		log.Fatalf("migrations failed: %v", err)
+	}
 	log.Println("Connected to database")
 
 	minioClient, err := minio.New(mustEnv("MINIO_ENDPOINT"), &minio.Options{
 		Creds:  credentials.NewStaticV4(mustEnv("MINIO_ACCESS_KEY"), mustEnv("MINIO_SECRET_KEY"), ""),
-		Secure: false,
+		Secure: os.Getenv("MINIO_SECURE") == "true",
 	})
 	if err != nil {
 		log.Fatalf("cannot create MinIO client: %v", err)
