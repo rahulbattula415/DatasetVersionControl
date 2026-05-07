@@ -7,7 +7,8 @@ import type {
 	Snapshot
 } from './types';
 
-const BASE = 'http://localhost:8080';
+import { PUBLIC_API_BASE } from '$env/static/public';
+const BASE = PUBLIC_API_BASE || 'http://localhost:8080';
 
 export const token = {
 	get: (): string | null => (typeof localStorage !== 'undefined' ? localStorage.getItem('jwt') : null),
