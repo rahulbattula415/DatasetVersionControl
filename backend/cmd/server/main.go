@@ -76,8 +76,12 @@ func main() {
 	mux.Handle("GET /snapshots/{a}/diff/{b}",              auth(handler.DiffHandler(pool, minioClient, minioBucket)))
 	mux.Handle("GET /datasets/{id}/columns/{col}/history", auth(handler.ColumnHistoryHandler(pool)))
 
-	log.Println("Server running on :8080")
-	log.Fatal(http.ListenAndServe(":8080", cors(mux)))
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	log.Printf("Server running on :%s", port)
+	log.Fatal(http.ListenAndServe(":"+port, cors(mux)))
 }
 
 func cors(next http.Handler) http.Handler {
