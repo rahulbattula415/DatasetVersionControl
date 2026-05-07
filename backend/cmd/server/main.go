@@ -35,6 +35,7 @@ func main() {
 	minioClient, err := minio.New(mustEnv("MINIO_ENDPOINT"), &minio.Options{
 		Creds:  credentials.NewStaticV4(mustEnv("MINIO_ACCESS_KEY"), mustEnv("MINIO_SECRET_KEY"), ""),
 		Secure: os.Getenv("MINIO_SECURE") == "true",
+		Region: "auto",
 	})
 	if err != nil {
 		log.Fatalf("cannot create MinIO client: %v", err)

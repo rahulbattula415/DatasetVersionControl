@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"sort"
 
@@ -95,6 +96,7 @@ func CreateSnapshotHandler(pool *pgxpool.Pool, minioClient *minio.Client, bucket
 			minio.PutObjectOptions{ContentType: "text/csv"},
 		)
 		if err != nil {
+			log.Printf("MinIO PutObject error: %v", err)
 			httpError(w, "failed to store file", http.StatusInternalServerError)
 			return
 		}
