@@ -2,6 +2,8 @@
 
 A Git-like version control system for CSV datasets. Track schema changes, diff any two versions row-by-row, branch and merge datasets, and explore per-column statistics over time — all through a clean web UI and REST API.
 
+**Live demo:** deployed with Vercel (frontend) + Render (backend) + Cloudflare R2 (storage).
+
 ---
 
 ## Why it's hard
@@ -10,7 +12,7 @@ CSV datasets change in ways that file-diff tools can't handle:
 - **Row order is meaningless** — a sort is not a change.
 - **Schema evolves** — columns get added, renamed, or dropped.
 - **Identity matters** — a modified row is not a delete + add; it's the same entity with changed fields.
-- **Scale** — 50 k-row datasets need sub-5-second diffs without hitting the database per row.
+- **Scale** — large datasets need fast diffs without hitting the database per row.
 
 DatasetVC solves this with content-addressed, immutable snapshots and a primary-key-aware diff engine.
 
@@ -19,31 +21,42 @@ DatasetVC solves this with content-addressed, immutable snapshots and a primary-
 ## Architecture
 
 ```
-┌─────────────────────┐      ┌──────────────────┐
-│   SvelteKit UI      │─────▶│  Go REST API      │
-│  (port 5173)        │      │  (port 8080)       │
-└─────────────────────┘      └────────┬───────────┘
-                                       │
-                        ┌──────────────┴──────────────┐
-                        │                             │
-                  ┌─────▼──────┐             ┌────────▼──────┐
-                  │ PostgreSQL │             │     MinIO      │
-                  │  metadata  │             │  CSV objects   │
-                  │ (port 5432)│             │  (port 9000)   │
-                  └────────────┘             └───────────────┘
+Browser (Vercel)  ──►  Go API (Render)  ──►  PostgreSQL (Render managed)
+                                         ──►  Cloudflare R2 (CSV storage)
 ```
 
-### Data model
+| Layer | Technology | Hosting |
+|-------|-----------|---------|
+| Frontend | SvelteKit 2 + Svelte 5 + Tailwind CSS | Vercel |
+| Backend | Go 1.25, `net/http` | Render (Docker) |
+| Database | PostgreSQL (pgx/v5) | Render managed Postgres |
+| Object storage | Cloudflare R2 (S3-compatible via `minio-go`) | Cloudflare |
+| Auth | JWT (HS256, 7-day expiry) + bcrypt | — |
+
+---
+
+## Features
+
+- **Snapshots** — every CSV upload is an immutable, content-addressed commit
+- **Branching** — create branches from any snapshot; fast-forward-only merges
+- **Row-level diffing** — compare any two snapshots by primary key (added / deleted / modified rows), with diff caching
+- **Column Explorer** — min/max/mean/nulls/unique stats per column, with trend charts across snapshots
+- **Authentication** — per-user datasets; all data is private and scoped to the authenticated user
+
+---
+
+## Data model
 
 ```
-datasets          (id, name, primary_key_col)
-  └── snapshots   (id, dataset_id, parent_id, snapshot_hash, file_hash, row_count)
+users             (id, email, password_hash)
+datasets          (id, name, primary_key_col, created_by)
+  └── snapshots   (id, dataset_id, parent_id, snapshot_hash, file_hash, row_count, message)
         └── snapshot_columns       (snapshot_id, column_name, column_type, column_index)
         └── snapshot_column_stats  (snapshot_id, column_name, min, max, mean, nulls, uniques)
   └── branches    (id, dataset_id, name, head_snapshot_id)
-  └── merges      (id, source_branch_id, target_branch_id, snapshot_id)
+  └── merges      (id, source_branch_id, target_branch_id, snapshot_id, merged_by)
 
-diff_cache        (snapshot_a_hash, snapshot_b_hash, diff_json)   ← content-addressed cache
+diff_cache        (snapshot_a_hash, snapshot_b_hash, diff_json)
 ```
 
 ### Snapshot immutability
@@ -56,55 +69,55 @@ snapshot_hash = sha256(file_hash | sorted_schema_json | parent_snapshot_id_or_RO
 
 - `file_hash` — SHA-256 of the raw CSV bytes (deduplicates unchanged files).
 - `sorted_schema_json` — sorted column names + types (catches schema-only changes).
-- `parent_snapshot_id` — embeds lineage so the same file from a different parent produces a different hash.
+- `parent_snapshot_id` — embeds lineage so the same file on a different branch produces a different hash.
 
-The `snapshot_hash` column has a `UNIQUE` constraint, so inserting a duplicate is a DB-level no-op. No `UPDATE` queries ever touch the `snapshots` table.
+The `snapshot_hash` column has a `UNIQUE` constraint, so inserting a duplicate is a DB-level no-op. The `snapshots` table is append-only.
 
 ---
 
 ## API reference
 
+All routes except `/auth/*` require `Authorization: Bearer <token>`.
+
 | Method | Path | Description |
 |--------|------|-------------|
+| `POST` | `/auth/register` | Create account, returns JWT |
+| `POST` | `/auth/login` | Sign in, returns JWT |
+| `GET`  | `/datasets` | List authenticated user's datasets |
 | `POST` | `/datasets` | Create dataset (`name`, `primary_key_col`) |
-| `GET`  | `/datasets` | List datasets with snapshot count |
 | `GET`  | `/datasets/:id` | Get single dataset |
 | `POST` | `/datasets/:id/snapshots` | Commit a CSV (`file`, `message?`, `branch_id?`) |
 | `GET`  | `/datasets/:id/snapshots` | List snapshots (newest first) |
 | `POST` | `/datasets/:id/branches` | Create branch (`name`, `head_snapshot_id?`) |
 | `GET`  | `/datasets/:id/branches` | List branches |
-| `PATCH`| `/branches/:id` | Fast-forward head (`head_snapshot_id` must be descendant) |
-| `POST` | `/branches/:id/merge` | Merge source branch (fast-forward only) |
+| `PATCH`| `/branches/:id` | Fast-forward head (`head_snapshot_id` must be a descendant) |
+| `POST` | `/branches/:id/merge` | Merge source branch into target (fast-forward only) |
 | `GET`  | `/snapshots/:a/diff/:b` | Row-level diff (`page`, `page_size`) |
 | `GET`  | `/datasets/:id/columns/:col/history` | Column stats over time (`branch_id?`) |
 
-### Diff response
+### Diff response shape
 
 ```json
 {
-  "summary": { "added": 2, "deleted": 1, "modified": 3 },
-  "added":    [ { "id": "11", "name": "Dave", "revenue": "4000" } ],
-  "deleted":  [ { "id": "5",  "name": "Eve",  "revenue": "900"  } ],
-  "modified": [
-    { "key": "1", "changes": [{ "column": "revenue", "old": "1000", "new": "1500" }] }
-  ],
+  "summary":     { "added": 2, "deleted": 1, "modified": 3 },
+  "added":       [ { "id": "11", "name": "Dave", "revenue": "4000" } ],
+  "deleted":     [ { "id": "5",  "name": "Eve",  "revenue": "900"  } ],
+  "modified":    [ { "key": "1", "changes": [{ "column": "revenue", "old": "1000", "new": "1500" }] } ],
   "schema_match": true,
-  "cached": false,
-  "computed_ms": 42,
-  "page": 1,
-  "page_size": 100,
-  "total_rows": 6
+  "cached":       false,
+  "computed_ms":  42,
+  "page": 1, "page_size": 100, "total_rows": 6
 }
 ```
 
 ---
 
-## Getting started
+## Local development
 
 ### Prerequisites
 
 - Docker & Docker Compose
-- Go 1.22+
+- Go 1.25+
 - Node.js 18+
 
 ### 1. Start infrastructure
@@ -114,7 +127,7 @@ cd docker-compose-pg
 docker compose -f docker-compose-pg.yaml up -d
 ```
 
-This starts Postgres (port 5432), MinIO (port 9000/9001), and runs `schema.sql` automatically.
+Starts Postgres on port `5433` and MinIO on port `9000/9001`. The schema is applied automatically on server startup.
 
 ### 2. Start the backend
 
@@ -123,33 +136,63 @@ cd backend
 go run ./cmd/server
 ```
 
-The server reads `.env` for `DATABASE_URL`, `MINIO_*` — defaults work with the Docker setup above.
+Reads config from `backend/.env`. The defaults match the Docker setup above:
+
+```env
+DATABASE_URL=postgresql://root:secret@localhost:5433/dvc?sslmode=disable
+JWT_SECRET=change-me-in-production-use-32-plus-random-bytes
+MINIO_ENDPOINT=localhost:9000
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+MINIO_BUCKET=datasets
+# MINIO_SECURE=true   ← set this in production
+```
 
 ### 3. Start the frontend
 
 ```bash
 cd frontend
+npm install
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173).
+Open [http://localhost:5173](http://localhost:5173). Create an account, then start uploading CSVs.
 
-### 4. Load demo data
+The frontend reads `PUBLIC_API_BASE` from `frontend/.env` (defaults to `http://localhost:8080`).
 
-```bash
-bash seed/seed.sh
-```
+---
 
-This creates a `regional_sales` dataset and commits three quarterly CSV snapshots (Q1 → Q2 → Q3), each with additions, deletions, and modifications visible in the diff view.
+## Deployment
 
-### 5. Run integration tests
+### Backend → Render
 
-```bash
-cd backend
-DATABASE_URL=postgresql://root:secret@localhost:5432/dvc \
-MINIO_ENDPOINT=localhost:9000 MINIO_ACCESS_KEY=minioadmin MINIO_SECRET_KEY=minioadmin \
-go test ./internal/handler/ -v -run Integration -count=1
-```
+1. Create a new **Web Service** on Render, connect the repo, set **Root Directory** to `backend`, **Runtime** to Docker.
+2. Create a **PostgreSQL** database on Render and wire its **Internal Database URL** to `DATABASE_URL`.
+3. Set the remaining environment variables:
+
+| Variable | Value |
+|----------|-------|
+| `JWT_SECRET` | Any long random string |
+| `MINIO_ENDPOINT` | `<account-id>.r2.cloudflarestorage.com` |
+| `MINIO_ACCESS_KEY` | Cloudflare R2 Account API token key |
+| `MINIO_SECRET_KEY` | Cloudflare R2 Account API token secret |
+| `MINIO_BUCKET` | Your R2 bucket name (exact match, case-sensitive) |
+| `MINIO_SECURE` | `true` |
+
+The schema runs automatically on every startup — no separate migration step needed.
+
+### Storage → Cloudflare R2
+
+1. Create a bucket in Cloudflare R2 with **public access disabled**.
+2. Go to **R2 → API Tokens → Create Account API Token**.
+3. Set permissions to **Object Read & Write**, scoped to your bucket.
+4. Use the resulting Access Key ID and Secret Key as `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY`.
+
+### Frontend → Vercel
+
+1. Import the repo on Vercel. Set **Root Directory** to `frontend`.
+2. Add one environment variable: `PUBLIC_API_BASE` = your Render service URL (no trailing slash).
+3. Deploy. Vercel auto-detects SvelteKit via `frontend/vercel.json`.
 
 ---
 
@@ -157,8 +200,10 @@ go test ./internal/handler/ -v -run Integration -count=1
 
 | Decision | Rationale |
 |----------|-----------|
-| Append-only `snapshots` table | Immutability enforced at DB level via `UNIQUE(snapshot_hash)` — no UPDATE ever |
-| MinIO for CSV blobs | Keeps Postgres lean; S3-compatible for cloud migration |
-| Fast-forward-only merges | Avoids 3-way merge complexity; simple ancestry check via recursive CTE |
-| DB diff cache | Avoids re-loading 50 k-row files on every request; keyed by `(hash_a, hash_b)` |
-| Column stats at commit time | Stats are cheap at write time; makes the history chart instant at read time |
+| Append-only `snapshots` table | Immutability enforced at DB level via `UNIQUE(snapshot_hash)` — no UPDATE ever touches it |
+| Cloudflare R2 for CSV blobs | Keeps Postgres lean; S3-compatible API means the same `minio-go` client works locally and in production |
+| Fast-forward-only merges | Avoids 3-way merge complexity; ancestry verified via recursive CTE |
+| DB diff cache | Avoids re-reading large files on repeat requests; keyed by `(hash_a, hash_b)` |
+| Column stats at commit time | Cheap at write time, instant at read time — no full table scan needed for the history chart |
+| Schema migration on startup | All DDL uses `IF NOT EXISTS`; running on every boot is safe and removes a manual deploy step |
+| `ssr = false` on frontend | All pages use `localStorage` for auth; disabling SSR avoids server-side rendering errors on Vercel |
