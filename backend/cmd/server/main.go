@@ -40,7 +40,7 @@ func main() {
 		log.Fatalf("cannot create MinIO client: %v", err)
 	}
 	minioBucket := mustEnv("MINIO_BUCKET")
-	if exists, _ := minioClient.BucketExists(ctx, minioBucket); !exists {
+	if exists, err := minioClient.BucketExists(ctx, minioBucket); err == nil && !exists {
 		if err := minioClient.MakeBucket(ctx, minioBucket, minio.MakeBucketOptions{}); err != nil {
 			log.Fatalf("cannot create MinIO bucket: %v", err)
 		}
