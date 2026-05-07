@@ -9,14 +9,74 @@ import type {
 
 const BASE = 'http://localhost:8080';
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-	const res = await fetch(`${BASE}${path}`, init);
+export const token = {
+	get: (): string | null => (typeof localStorage !== 'undefined' ? localStorage.getItem('jwt') : null),
+	set: (t: string) => localStorage.setItem('jwt', t),
+	clear: () => localStorage.removeItem('jwt'),
+	email: (): string | null => (typeof localStorage !== 'undefined' ? localStorage.getItem('user_email') : null),
+	setEmail: (e: string) => localStorage.setItem('user_email', e)
+};
+
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+	const t = token.get();
+	const headers = new Headers(init.headers);
+	if (t) headers.set('Authorization', `Bearer ${t}`);
+
+	const res = await fetch(`${BASE}${path}`, { ...init, headers });
+
+	if (res.status === 401) {
+		token.clear();
+		window.location.href = '/login';
+		throw new Error('Unauthorized');
+	}
+
 	if (!res.ok) {
 		const text = await res.text().catch(() => res.statusText);
 		throw new Error(`${res.status}: ${text}`);
 	}
 	return res.json() as Promise<T>;
 }
+
+// ─── Auth ──────────────────────────────────────────────────────────────────────
+
+export const auth = {
+	register: async (email: string, password: string): Promise<string> => {
+		const res = await fetch(`${BASE}/auth/register`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ email, password })
+		});
+		if (!res.ok) {
+			const text = await res.text().catch(() => res.statusText);
+			throw new Error(`${res.status}: ${text}`);
+		}
+		const data: { token: string } = await res.json();
+		token.set(data.token);
+		token.setEmail(email);
+		return data.token;
+	},
+
+	login: async (email: string, password: string): Promise<string> => {
+		const res = await fetch(`${BASE}/auth/login`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ email, password })
+		});
+		if (!res.ok) {
+			const text = await res.text().catch(() => res.statusText);
+			throw new Error(`${res.status}: ${text}`);
+		}
+		const data: { token: string } = await res.json();
+		token.set(data.token);
+		token.setEmail(email);
+		return data.token;
+	},
+
+	logout: () => {
+		token.clear();
+		window.location.href = '/login';
+	}
+};
 
 // ─── Datasets ──────────────────────────────────────────────────────────────────
 

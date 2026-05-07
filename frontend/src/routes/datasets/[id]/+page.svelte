@@ -6,7 +6,7 @@
 	import SnapshotDiff from '$lib/components/SnapshotDiff.svelte';
 	import ColumnExplorer from '$lib/components/ColumnExplorer.svelte';
 
-	const datasetId = $derived($page.params.id);
+	const datasetId = $derived($page.params.id ?? '');
 
 	let dataset: Dataset | null = $state(null);
 	let snapshots: Snapshot[] = $state([]);

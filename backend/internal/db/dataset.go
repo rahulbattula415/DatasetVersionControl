@@ -55,7 +55,7 @@ func GetDataset(ctx context.Context, pool *pgxpool.Pool, id string) (*Dataset, e
 	return &d, nil
 }
 
-func ListDatasets(ctx context.Context, pool *pgxpool.Pool) ([]DatasetSummary, error) {
+func ListDatasets(ctx context.Context, pool *pgxpool.Pool, ownerID string) ([]DatasetSummary, error) {
 	rows, err := pool.Query(ctx, `
 		SELECT
 			d.id, d.name, d.primary_key_col, d.created_by, d.created_at,
@@ -63,9 +63,10 @@ func ListDatasets(ctx context.Context, pool *pgxpool.Pool) ([]DatasetSummary, er
 			MAX(s.created_at)       AS last_updated
 		FROM datasets d
 		LEFT JOIN snapshots s ON s.dataset_id = d.id
+		WHERE d.created_by = $1
 		GROUP BY d.id
 		ORDER BY d.created_at DESC
-	`)
+	`, ownerID)
 	if err != nil {
 		return nil, fmt.Errorf("ListDatasets: %w", err)
 	}

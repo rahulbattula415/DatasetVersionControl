@@ -1,5 +1,13 @@
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
+-- Users: email + bcrypt password hash
+CREATE TABLE IF NOT EXISTS users (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email         TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Datasets: each represents a named versioned table with a designated primary key column
 CREATE TABLE IF NOT EXISTS datasets (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),

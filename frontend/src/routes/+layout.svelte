@@ -1,7 +1,28 @@
 <script lang="ts">
 	import '../app.css';
 	import { page } from '$app/stores';
+	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { token, auth } from '$lib/api';
+
 	let { children } = $props();
+
+	const publicPaths = ['/login', '/register'];
+	let userEmail = $state('');
+	let ready = $state(false);
+
+	onMount(() => {
+		userEmail = token.email() ?? '';
+		if (!token.get() && !publicPaths.includes($page.url.pathname)) {
+			goto('/login');
+		} else {
+			ready = true;
+		}
+	});
+
+	function logout() {
+		auth.logout();
+	}
 </script>
 
 <div class="min-h-screen bg-gray-950 text-gray-100">
@@ -14,16 +35,33 @@
 				</svg>
 				DatasetVC
 			</a>
-			<span class="text-gray-600">/</span>
-			<nav class="flex items-center gap-4 text-sm text-gray-400">
-				<a href="/" class:text-white={$page.url.pathname === '/'} class="hover:text-gray-200">
-					Datasets
-				</a>
-			</nav>
+
+			{#if !publicPaths.includes($page.url.pathname)}
+				<span class="text-gray-600">/</span>
+				<nav class="flex items-center gap-4 text-sm text-gray-400">
+					<a href="/" class:text-white={$page.url.pathname === '/'} class="hover:text-gray-200">
+						Datasets
+					</a>
+				</nav>
+			{/if}
+
+			<div class="ml-auto flex items-center gap-3">
+				{#if userEmail}
+					<span class="text-sm text-gray-500">{userEmail}</span>
+					<button
+						onclick={logout}
+						class="rounded-lg border border-gray-700 px-3 py-1 text-sm text-gray-400 hover:border-gray-500 hover:text-gray-200"
+					>
+						Sign out
+					</button>
+				{/if}
+			</div>
 		</div>
 	</header>
 
 	<main class="mx-auto max-w-7xl px-6 py-8">
-		{@render children()}
+		{#if ready || publicPaths.includes($page.url.pathname)}
+			{@render children()}
+		{/if}
 	</main>
 </div>

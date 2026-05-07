@@ -14,9 +14,11 @@
 	let loading = $state(false);
 	let error = $state('');
 
-	// Chart references
 	let canvas: HTMLCanvasElement | undefined = $state();
 	let chartInstance: any = null;
+
+	const latest = $derived(history[history.length - 1] ?? null);
+	const showChart = $derived(history.length > 1);
 
 	async function loadHistory() {
 		if (!selectedCol) return;
@@ -24,7 +26,7 @@
 		error = '';
 		try {
 			history = await api.columns.history(datasetId, selectedCol, branchId);
-			await drawChart();
+			if (history.length > 1) await drawChart();
 		} catch (e: any) {
 			error = e.message;
 		} finally {
@@ -33,7 +35,7 @@
 	}
 
 	async function drawChart() {
-		if (!canvas || history.length === 0) return;
+		if (!canvas) return;
 
 		const { Chart, registerables } = await import('chart.js');
 		Chart.register(...registerables);
@@ -45,8 +47,8 @@
 		);
 
 		const datasets = [];
-
 		const hasNumeric = history.some((h) => h.mean_value !== null);
+
 		if (hasNumeric) {
 			datasets.push({
 				label: 'Mean',
@@ -60,7 +62,7 @@
 		}
 
 		datasets.push({
-			label: 'Unique count',
+			label: 'Unique',
 			data: history.map((h) => h.unique_count),
 			borderColor: '#10b981',
 			backgroundColor: 'transparent',
@@ -69,7 +71,7 @@
 		});
 
 		datasets.push({
-			label: 'Null count',
+			label: 'Nulls',
 			data: history.map((h) => h.null_count),
 			borderColor: '#f59e0b',
 			backgroundColor: 'transparent',
@@ -163,12 +165,36 @@
 	<div class="flex items-center justify-center rounded-xl border border-gray-800 bg-gray-900 py-12 text-gray-500">
 		No stats available for this column yet.
 	</div>
-	{:else}
-	<div class="rounded-xl border border-gray-800 bg-gray-900 p-4">
-		<canvas bind:this={canvas}></canvas>
+	{:else if latest}
+
+	<!-- Stats cards — always shown -->
+	<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+		{#each [
+			{ label: 'Min', value: latest.min_value ?? '—', color: 'text-white' },
+			{ label: 'Max', value: latest.max_value ?? '—', color: 'text-white' },
+			{ label: 'Mean', value: latest.mean_value != null ? Number(latest.mean_value).toFixed(3) : '—', color: 'text-indigo-300' },
+			{ label: 'Nulls', value: latest.null_count, color: latest.null_count > 0 ? 'text-amber-400' : 'text-emerald-400' },
+			{ label: 'Unique', value: latest.unique_count, color: 'text-emerald-400' },
+		] as stat}
+		<div class="rounded-xl border border-gray-800 bg-gray-900 px-4 py-3">
+			<p class="text-xs text-gray-500">{stat.label}</p>
+			<p class="mt-1 text-lg font-mono font-semibold {stat.color}">{stat.value}</p>
+		</div>
+		{/each}
 	</div>
 
-	<!-- Stats table -->
+	<!-- Trend chart — only shown when there are 2+ snapshots -->
+	{#if showChart}
+	<div class="rounded-xl border border-gray-800 bg-gray-900 p-4">
+		<p class="mb-3 text-xs text-gray-500">Trend across {history.length} snapshots</p>
+		<canvas bind:this={canvas}></canvas>
+	</div>
+	{:else}
+	<p class="text-xs text-gray-600">Upload more snapshots to see trends over time.</p>
+	{/if}
+
+	<!-- History table — only shown when there are 2+ snapshots -->
+	{#if showChart}
 	<div class="overflow-x-auto rounded-xl border border-gray-800">
 		<table class="w-full text-sm">
 			<thead>
@@ -197,5 +223,7 @@
 			</tbody>
 		</table>
 	</div>
+	{/if}
+
 	{/if}
 </div>

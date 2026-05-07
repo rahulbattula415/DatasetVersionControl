@@ -33,14 +33,13 @@ func CreateDatasetHandler(pool *pgxpool.Pool) http.HandlerFunc {
 		dataset, err := db.CreateDataset(r.Context(), pool, db.CreateDatasetParams{
 			Name:          req.Name,
 			PrimaryKeyCol: req.PrimaryKeyCol,
-			CreatedBy:     systemUser,
+			CreatedBy:     userID(r),
 		})
 		if err != nil {
 			httpError(w, "failed to create dataset", http.StatusInternalServerError)
 			return
 		}
 
-		// Auto-create main branch with no head
 		if _, err := db.CreateBranch(r.Context(), pool, dataset.ID, "main", nil); err != nil {
 			httpError(w, "failed to create main branch", http.StatusInternalServerError)
 			return
@@ -52,10 +51,8 @@ func CreateDatasetHandler(pool *pgxpool.Pool) http.HandlerFunc {
 
 func GetDatasetHandler(pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id := r.PathValue("id")
-		dataset, err := db.GetDataset(r.Context(), pool, id)
-		if err != nil {
-			httpError(w, "dataset not found", http.StatusNotFound)
+		dataset := requireDatasetOwner(r.Context(), pool, w, r.PathValue("id"), userID(r))
+		if dataset == nil {
 			return
 		}
 		jsonResponse(w, http.StatusOK, dataset)
@@ -64,7 +61,7 @@ func GetDatasetHandler(pool *pgxpool.Pool) http.HandlerFunc {
 
 func ListDatasetsHandler(pool *pgxpool.Pool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		datasets, err := db.ListDatasets(r.Context(), pool)
+		datasets, err := db.ListDatasets(r.Context(), pool, userID(r))
 		if err != nil {
 			httpError(w, "failed to list datasets", http.StatusInternalServerError)
 			return
