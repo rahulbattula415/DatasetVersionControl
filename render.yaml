@@ -19,6 +19,6 @@ services:
       # MINIO_ACCESS_KEY
       # MINIO_SECRET_KEY
       - key: MINIO_BUCKET
-        value: datasets
+        value: dataset-version-control
       - key: MINIO_SECURE
         value: "true"
