@@ -7,10 +7,11 @@ services:
     plan: free
     healthCheckPath: /ping
     envVars:
+      # Supabase session-pooler connection string. Set in the Render dashboard
+      # (contains the DB password, so it is not committed here):
+      #   postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require
       - key: DATABASE_URL
-        fromDatabase:
-          name: datasetvc-db
-          property: connectionString
+        sync: false
       - key: JWT_SECRET
         generateValue: true
       # Set these in the Render dashboard after creating the service:
@@ -21,8 +22,3 @@ services:
         value: datasets
       - key: MINIO_SECURE
         value: "true"
-
-databases:
-  - name: datasetvc-db
-    plan: free
-    databaseName: dvc
