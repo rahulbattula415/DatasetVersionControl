@@ -2,7 +2,7 @@
 
 A Git-like version control system for CSV datasets. Track schema changes, diff any two versions row-by-row, branch and merge datasets, and explore per-column statistics over time — all through a clean web UI and REST API.
 
-**Live demo:** deployed with Vercel (frontend) + Render (backend) + Cloudflare R2 (storage).
+**Live demo:** deployed with Vercel (frontend) + Render (backend) + Supabase (Postgres) + Cloudflare R2 (storage).
 
 ---
 
@@ -21,7 +21,7 @@ DatasetVC solves this with content-addressed, immutable snapshots and a primary-
 ## Architecture
 
 ```
-Browser (Vercel)  ──►  Go API (Render)  ──►  PostgreSQL (Render managed)
+Browser (Vercel)  ──►  Go API (Render)  ──►  PostgreSQL (Supabase)
                                          ──►  Cloudflare R2 (CSV storage)
 ```
 
@@ -29,7 +29,7 @@ Browser (Vercel)  ──►  Go API (Render)  ──►  PostgreSQL (Render mana
 |-------|-----------|---------|
 | Frontend | SvelteKit 2 + Svelte 5 + Tailwind CSS | Vercel |
 | Backend | Go 1.25, `net/http` | Render (Docker) |
-| Database | PostgreSQL (pgx/v5) | Render managed Postgres |
+| Database | PostgreSQL (pgx/v5) | Supabase (session pooler) |
 | Object storage | Cloudflare R2 (S3-compatible via `minio-go`) | Cloudflare |
 | Auth | JWT (HS256, 7-day expiry) + bcrypt | — |
 
@@ -167,26 +167,35 @@ The frontend reads `PUBLIC_API_BASE` from `frontend/.env` (defaults to `http://l
 ### Backend → Render
 
 1. Create a new **Web Service** on Render, connect the repo, set **Root Directory** to `backend`, **Runtime** to Docker.
-2. Create a **PostgreSQL** database on Render and wire its **Internal Database URL** to `DATABASE_URL`.
+2. Provision the database on **Supabase** (see [Database → Supabase](#database--supabase) below) and set its **session pooler** connection string as `DATABASE_URL`.
 3. Set the remaining environment variables:
 
 | Variable | Value |
 |----------|-------|
+| `DATABASE_URL` | Supabase **session pooler** URI, e.g. `postgresql://postgres.<ref>:<pw>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require` |
 | `JWT_SECRET` | Any long random string |
-| `MINIO_ENDPOINT` | `<account-id>.r2.cloudflarestorage.com` |
-| `MINIO_ACCESS_KEY` | Cloudflare R2 Account API token key |
-| `MINIO_SECRET_KEY` | Cloudflare R2 Account API token secret |
+| `MINIO_ENDPOINT` | `<account-id>.r2.cloudflarestorage.com` (no scheme) |
+| `MINIO_ACCESS_KEY` | Cloudflare R2 token **Access Key ID** |
+| `MINIO_SECRET_KEY` | Cloudflare R2 token **Secret Access Key** |
 | `MINIO_BUCKET` | Your R2 bucket name (exact match, case-sensitive) |
 | `MINIO_SECURE` | `true` |
 
 The schema runs automatically on every startup — no separate migration step needed.
 
+### Database → Supabase
+
+1. Create a project at [supabase.com](https://supabase.com) and save the database password (use letters/numbers only to avoid URL-encoding the connection string).
+2. **Connect** → **Session pooler** (port `5432`) and copy the URI. Use the session pooler, **not** the direct connection — the direct host is IPv6-only on the free tier and is unreachable from Render's IPv4 network.
+3. Append `?sslmode=require` and set the result as `DATABASE_URL` in Render.
+
+The schema (`backend/internal/db/schema.sql`) is applied automatically on startup; no manual SQL is needed in Supabase.
+
 ### Storage → Cloudflare R2
 
 1. Create a bucket in Cloudflare R2 with **public access disabled**.
 2. Go to **R2 → API Tokens → Create Account API Token**.
-3. Set permissions to **Object Read & Write**, scoped to your bucket.
-4. Use the resulting Access Key ID and Secret Key as `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY`.
+3. Set permissions to **Object Read & Write**. If you scope it to specific buckets, the scope **must include the bucket named in `MINIO_BUCKET`** — a mismatch returns `Access Denied` on upload.
+4. Copy the resulting **Access Key ID** and **Secret Access Key** as a matched pair into `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` (the secret is shown only once). The S3 endpoint shown on the same screen goes into `MINIO_ENDPOINT` with `https://` stripped.
 
 ### Frontend → Vercel
 
