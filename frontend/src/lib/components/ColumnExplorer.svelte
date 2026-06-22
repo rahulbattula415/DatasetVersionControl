@@ -104,9 +104,9 @@
 					}
 				},
 				scales: {
-					x: { ticks: { color: '#6b7280' }, grid: { color: '#1f2937' } },
+					x: { ticks: { color: '#9ca3af' }, grid: { color: '#1f2937' } },
 					y: {
-						ticks: { color: '#6b7280' },
+						ticks: { color: '#9ca3af' },
 						grid: { color: '#1f2937' },
 						title: { display: hasNumeric, text: 'Mean value', color: '#9ca3af' }
 					},
@@ -114,7 +114,7 @@
 						? {
 								y2: {
 									position: 'right',
-									ticks: { color: '#6b7280' },
+									ticks: { color: '#9ca3af' },
 									grid: { drawOnChartArea: false },
 									title: { display: true, text: 'Count', color: '#9ca3af' }
 								}
@@ -143,26 +143,29 @@
 		<h2 class="font-semibold">Column Explorer</h2>
 		<select
 			bind:value={selectedCol}
-			class="rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
+			class="rounded-lg border border-edge-strong bg-raised px-3 py-1.5 text-sm focus:border-primary-hover focus:outline-none"
 		>
 			{#each columns as col}
 			<option value={col.column_name}>{col.column_name} ({col.column_type})</option>
 			{/each}
 		</select>
 		{#if loading}
-		<svg class="h-4 w-4 animate-spin text-gray-400" fill="none" viewBox="0 0 24 24">
-			<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-			<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-		</svg>
+		<span role="status" class="inline-flex items-center">
+			<svg class="h-4 w-4 animate-spin text-ink-soft" aria-hidden="true" fill="none" viewBox="0 0 24 24">
+				<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+				<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+			</svg>
+			<span class="sr-only">Loading column stats…</span>
+		</span>
 		{/if}
 	</div>
 
 	{#if error}
-	<div class="rounded-lg border border-red-700 bg-red-900/30 px-4 py-3 text-sm text-red-300">{error}</div>
+	<div role="alert" class="rounded-lg border border-red-700 bg-red-900/30 px-4 py-3 text-sm text-red-300">{error}</div>
 	{/if}
 
 	{#if history.length === 0 && !loading}
-	<div class="flex items-center justify-center rounded-xl border border-gray-800 bg-gray-900 py-12 text-gray-500">
+	<div class="flex items-center justify-center rounded-xl border border-edge bg-surface py-12 text-ink-soft">
 		No stats available for this column yet.
 	</div>
 	{:else if latest}
@@ -172,12 +175,12 @@
 		{#each [
 			{ label: 'Min', value: latest.min_value ?? '—', color: 'text-white' },
 			{ label: 'Max', value: latest.max_value ?? '—', color: 'text-white' },
-			{ label: 'Mean', value: latest.mean_value != null ? Number(latest.mean_value).toFixed(3) : '—', color: 'text-indigo-300' },
+			{ label: 'Mean', value: latest.mean_value != null ? Number(latest.mean_value).toFixed(3) : '—', color: 'text-primary-data' },
 			{ label: 'Nulls', value: latest.null_count, color: latest.null_count > 0 ? 'text-amber-400' : 'text-emerald-400' },
 			{ label: 'Unique', value: latest.unique_count, color: 'text-emerald-400' },
 		] as stat}
-		<div class="rounded-xl border border-gray-800 bg-gray-900 px-4 py-3">
-			<p class="text-xs text-gray-500">{stat.label}</p>
+		<div class="rounded-xl border border-edge bg-surface px-4 py-3">
+			<p class="text-xs text-ink-soft">{stat.label}</p>
 			<p class="mt-1 text-lg font-mono font-semibold {stat.color}">{stat.value}</p>
 		</div>
 		{/each}
@@ -185,34 +188,34 @@
 
 	<!-- Trend chart — only shown when there are 2+ snapshots -->
 	{#if showChart}
-	<div class="rounded-xl border border-gray-800 bg-gray-900 p-4">
-		<p class="mb-3 text-xs text-gray-500">Trend across {history.length} snapshots</p>
+	<div class="rounded-xl border border-edge bg-surface p-4">
+		<p class="mb-3 text-xs text-ink-soft">Trend across {history.length} snapshots</p>
 		<canvas bind:this={canvas}></canvas>
 	</div>
 	{:else}
-	<p class="text-xs text-gray-600">Upload more snapshots to see trends over time.</p>
+	<p class="text-xs text-ink-soft">Upload more snapshots to see trends over time.</p>
 	{/if}
 
 	<!-- History table — only shown when there are 2+ snapshots -->
 	{#if showChart}
-	<div class="overflow-x-auto rounded-xl border border-gray-800">
+	<div class="overflow-x-auto rounded-xl border border-edge">
 		<table class="w-full text-sm">
 			<thead>
-				<tr class="border-b border-gray-800 bg-gray-900">
-					<th class="px-3 py-2 text-left font-medium text-gray-400">Snapshot</th>
-					<th class="px-3 py-2 text-left font-medium text-gray-400">Commit</th>
-					<th class="px-3 py-2 text-right font-medium text-gray-400">Min</th>
-					<th class="px-3 py-2 text-right font-medium text-gray-400">Max</th>
-					<th class="px-3 py-2 text-right font-medium text-gray-400">Mean</th>
-					<th class="px-3 py-2 text-right font-medium text-gray-400">Nulls</th>
-					<th class="px-3 py-2 text-right font-medium text-gray-400">Unique</th>
+				<tr class="border-b border-edge bg-surface">
+					<th class="px-3 py-2 text-left font-medium text-ink-soft">Snapshot</th>
+					<th class="px-3 py-2 text-left font-medium text-ink-soft">Commit</th>
+					<th class="px-3 py-2 text-right font-medium text-ink-soft">Min</th>
+					<th class="px-3 py-2 text-right font-medium text-ink-soft">Max</th>
+					<th class="px-3 py-2 text-right font-medium text-ink-soft">Mean</th>
+					<th class="px-3 py-2 text-right font-medium text-ink-soft">Nulls</th>
+					<th class="px-3 py-2 text-right font-medium text-ink-soft">Unique</th>
 				</tr>
 			</thead>
 			<tbody>
 				{#each history as h}
-				<tr class="border-b border-gray-800/50 hover:bg-gray-900">
-					<td class="px-3 py-2 font-mono text-xs text-indigo-300">{h.snapshot_id.slice(0, 8)}</td>
-					<td class="px-3 py-2 text-gray-400 text-xs">{h.message ?? '—'}</td>
+				<tr class="border-b border-edge/50 hover:bg-surface">
+					<td class="px-3 py-2 font-mono text-xs text-primary-data">{h.snapshot_id.slice(0, 8)}</td>
+					<td class="px-3 py-2 text-ink-soft text-xs">{h.message ?? '—'}</td>
 					<td class="px-3 py-2 text-right font-mono text-xs">{h.min_value ?? '—'}</td>
 					<td class="px-3 py-2 text-right font-mono text-xs">{h.max_value ?? '—'}</td>
 					<td class="px-3 py-2 text-right font-mono text-xs">{h.mean_value?.toFixed(2) ?? '—'}</td>
