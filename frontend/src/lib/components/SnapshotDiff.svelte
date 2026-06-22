@@ -16,21 +16,21 @@
 
 <div class="space-y-4">
 	<!-- Summary bar -->
-	<div class="flex flex-wrap items-center gap-3 rounded-xl border border-gray-800 bg-gray-900 p-4">
+	<div class="flex flex-wrap items-center gap-3 rounded-xl border border-edge bg-surface p-4">
 		<div class="flex gap-4 text-sm">
 			<button
 				onclick={() => filter = 'all'}
 				class="font-medium transition-colors"
 				class:text-white={filter === 'all'}
-				class:text-gray-400={filter !== 'all'}
+				class:text-ink-soft={filter !== 'all'}
 			>
-				All <span class="text-gray-500">{diff.summary.added + diff.summary.deleted + diff.summary.modified}</span>
+				All <span class="text-ink-soft">{diff.summary.added + diff.summary.deleted + diff.summary.modified}</span>
 			</button>
 			<button
 				onclick={() => filter = 'added'}
 				class="font-medium transition-colors"
 				class:text-emerald-400={filter === 'added'}
-				class:text-gray-400={filter !== 'added'}
+				class:text-ink-soft={filter !== 'added'}
 			>
 				+ Added <span>{diff.summary.added}</span>
 			</button>
@@ -38,7 +38,7 @@
 				onclick={() => filter = 'deleted'}
 				class="font-medium transition-colors"
 				class:text-red-400={filter === 'deleted'}
-				class:text-gray-400={filter !== 'deleted'}
+				class:text-ink-soft={filter !== 'deleted'}
 			>
 				− Deleted <span>{diff.summary.deleted}</span>
 			</button>
@@ -46,17 +46,17 @@
 				onclick={() => filter = 'modified'}
 				class="font-medium transition-colors"
 				class:text-amber-400={filter === 'modified'}
-				class:text-gray-400={filter !== 'modified'}
+				class:text-ink-soft={filter !== 'modified'}
 			>
 				~ Modified <span>{diff.summary.modified}</span>
 			</button>
 		</div>
 
-		<div class="ml-auto flex items-center gap-2 text-xs text-gray-500">
+		<div class="ml-auto flex items-center gap-2 text-xs text-ink-soft">
 			{#if diff.cached}
-			<span class="rounded-full bg-gray-800 px-2 py-0.5">cached</span>
+			<span class="rounded-full bg-raised px-2 py-0.5">cached</span>
 			{:else}
-			<span class="rounded-full bg-gray-800 px-2 py-0.5">{diff.computed_ms}ms</span>
+			<span class="rounded-full bg-raised px-2 py-0.5">{diff.computed_ms}ms</span>
 			{/if}
 			{#if !diff.schema_match}
 			<span class="rounded-full bg-amber-900/50 px-2 py-0.5 text-amber-400">schema mismatch</span>
@@ -77,26 +77,26 @@
 	{/if}
 
 	{#if diff.summary.added + diff.summary.deleted + diff.summary.modified === 0}
-	<div class="flex items-center justify-center rounded-xl border border-gray-800 bg-gray-900 py-12 text-gray-500">
+	<div class="flex items-center justify-center rounded-xl border border-edge bg-surface py-12 text-ink-soft">
 		Snapshots are identical.
 	</div>
 	{:else}
 
 	<!-- Diff table -->
-	<div class="overflow-x-auto rounded-xl border border-gray-800">
+	<div class="overflow-x-auto rounded-xl border border-edge">
 		<table class="w-full text-sm">
 			<thead>
-				<tr class="border-b border-gray-800 bg-gray-900">
+				<tr class="border-b border-edge bg-surface">
 					<th class="w-6 px-3 py-2"></th>
 					{#each allColumns as col}
-					<th class="px-3 py-2 text-left font-medium text-gray-400 whitespace-nowrap">{col}</th>
+					<th class="px-3 py-2 text-left font-medium text-ink-soft whitespace-nowrap">{col}</th>
 					{/each}
 				</tr>
 			</thead>
 			<tbody>
 				{#if showAdded}
 				{#each diff.added as row}
-				<tr class="border-b border-gray-800/50 bg-emerald-950/40 hover:bg-emerald-950/70">
+				<tr class="border-b border-edge/50 bg-emerald-950/40 hover:bg-emerald-950/70">
 					<td class="px-3 py-2 text-center text-emerald-400 font-bold">+</td>
 					{#each allColumns as col}
 					<td class="px-3 py-2 font-mono text-xs text-emerald-200">{row[col] ?? ''}</td>
@@ -107,7 +107,7 @@
 
 				{#if showDeleted}
 				{#each diff.deleted as row}
-				<tr class="border-b border-gray-800/50 bg-red-950/40 hover:bg-red-950/70">
+				<tr class="border-b border-edge/50 bg-red-950/40 hover:bg-red-950/70">
 					<td class="px-3 py-2 text-center text-red-400 font-bold">−</td>
 					{#each allColumns as col}
 					<td class="px-3 py-2 font-mono text-xs text-red-200 line-through decoration-red-700/50">{row[col] ?? ''}</td>
@@ -119,7 +119,7 @@
 				{#if showModified}
 				{#each diff.modified as modRow}
 				{@const changedCols = new Set(modRow.changes.map(c => c.column))}
-				<tr class="border-b border-gray-800/50 bg-amber-950/30 hover:bg-amber-950/60">
+				<tr class="border-b border-edge/50 bg-amber-950/30 hover:bg-amber-950/60">
 					<td class="px-3 py-2 text-center text-amber-400 font-bold">~</td>
 					{#each allColumns as col}
 					{@const change = modRow.changes.find(c => c.column === col)}
@@ -128,7 +128,7 @@
 						<span class="block text-red-300 line-through decoration-red-700/50">{change.old}</span>
 						<span class="block text-emerald-300">{change.new}</span>
 						{:else}
-						<span class="text-gray-400">{modRow.changes.find(c => c.column === primaryKey)?.old ?? modRow.key}</span>
+						<span class="text-ink-soft">{modRow.changes.find(c => c.column === primaryKey)?.old ?? modRow.key}</span>
 						{/if}
 					</td>
 					{/each}
@@ -139,7 +139,7 @@
 		</table>
 
 		{#if diff.total_rows > diff.page_size}
-		<div class="flex justify-center border-t border-gray-800 bg-gray-900 py-3 text-sm text-gray-500">
+		<div class="flex justify-center border-t border-edge bg-surface py-3 text-sm text-ink-soft">
 			Showing page {diff.page} of {Math.ceil(diff.total_rows / diff.page_size)} · {diff.total_rows} total changes
 		</div>
 		{/if}

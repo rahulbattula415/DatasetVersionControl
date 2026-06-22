@@ -149,37 +149,38 @@
 <svelte:head><title>{dataset?.name ?? 'Dataset'} — DatasetVC</title></svelte:head>
 
 {#if loading}
-<div class="flex items-center justify-center py-20 text-gray-500">
-	<svg class="mr-2 h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
+<div role="status" class="flex items-center justify-center py-20 text-ink-soft">
+	<svg class="mr-2 h-5 w-5 animate-spin" aria-hidden="true" fill="none" viewBox="0 0 24 24">
 		<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
 		<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
 	</svg>
 	Loading…
 </div>
 {:else if error}
-<div class="rounded-lg border border-red-700 bg-red-900/30 px-4 py-3 text-sm text-red-300">{error}</div>
+<div role="alert" class="rounded-lg border border-red-700 bg-red-900/30 px-4 py-3 text-sm text-red-300">{error}</div>
 {:else if dataset}
 
 <!-- Header -->
 <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
 	<div>
-		<div class="flex items-center gap-2 text-sm text-gray-500">
-			<a href="/" class="hover:text-gray-300">Datasets</a>
+		<div class="flex items-center gap-2 text-sm text-ink-soft">
+			<a href="/datasets" class="hover:text-gray-300">Datasets</a>
 			<span>/</span>
 			<span class="text-gray-200">{dataset.name}</span>
 		</div>
-		<h1 class="mt-1 text-2xl font-bold">{dataset.name}</h1>
-		<p class="mt-1 text-sm text-gray-400">
-			Primary key: <code class="rounded bg-gray-800 px-1 py-0.5 text-indigo-300">{dataset.primary_key_col}</code>
+		<h1 class="mt-1 text-2xl font-bold wrap-break-word">{dataset.name}</h1>
+		<p class="mt-1 text-sm text-ink-soft">
+			Primary key: <code class="rounded bg-raised px-1 py-0.5 text-primary-data">{dataset.primary_key_col}</code>
 			· {snapshots.length} snapshots
 		</p>
 	</div>
 
 	<!-- Branch switcher -->
 	<div class="flex items-center gap-2">
-		<label class="text-sm text-gray-400">Branch:</label>
+		<label for="branch-switcher" class="text-sm text-ink-soft">Branch:</label>
 		<select
-			class="rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm focus:border-indigo-500 focus:outline-none"
+			id="branch-switcher"
+			class="rounded-lg border border-edge-strong bg-raised px-3 py-1.5 text-sm focus:border-primary-hover focus:outline-none"
 			value={activeBranch?.id ?? ''}
 			onchange={(e) => {
 				activeBranch = branches.find((b) => b.id === (e.target as HTMLSelectElement).value) ?? null;
@@ -193,15 +194,15 @@
 </div>
 
 <!-- Tabs -->
-<div class="mb-6 flex gap-1 border-b border-gray-800">
+<div class="mb-6 flex gap-1 overflow-x-auto border-b border-edge">
 	{#each (['history', 'branches', 'upload', 'explore'] as const) as t}
 	<button
 		onclick={() => (tab = t)}
-		class="px-4 py-2 text-sm font-medium capitalize transition-colors"
+		class="shrink-0 whitespace-nowrap px-4 py-2 text-sm font-medium capitalize transition-colors"
 		class:border-b-2={tab === t}
-		class:border-indigo-500={tab === t}
+		class:border-primary-hover={tab === t}
 		class:text-white={tab === t}
-		class:text-gray-400={tab !== t}
+		class:text-ink-soft={tab !== t}
 		class:hover:text-gray-200={tab !== t}
 	>
 		{t}
@@ -213,22 +214,22 @@
 {#if tab === 'history'}
 <div class="space-y-4">
 	<!-- Diff comparison -->
-	<div class="rounded-xl border border-gray-800 bg-gray-900 p-4">
+	<div class="rounded-xl border border-edge bg-surface p-4">
 		<h2 class="mb-3 font-semibold text-sm text-gray-300">Compare Snapshots</h2>
 		<div class="flex flex-wrap items-center gap-3">
 			<select
 				bind:value={diffSnapA}
-				class="flex-1 min-w-40 rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+				class="flex-1 min-w-40 rounded-lg border border-edge-strong bg-raised px-3 py-2 text-sm focus:border-primary-hover focus:outline-none"
 			>
 				<option value="">Snapshot A (base)</option>
 				{#each snapshots as s}
 					<option value={s.id}>{shortHash(s.snapshot_hash)} — {s.message ?? 'no message'} ({s.row_count} rows)</option>
 				{/each}
 			</select>
-			<span class="text-gray-600">→</span>
+			<span class="text-ink-soft" aria-hidden="true">→</span>
 			<select
 				bind:value={diffSnapB}
-				class="flex-1 min-w-40 rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+				class="flex-1 min-w-40 rounded-lg border border-edge-strong bg-raised px-3 py-2 text-sm focus:border-primary-hover focus:outline-none"
 			>
 				<option value="">Snapshot B (head)</option>
 				{#each snapshots as s}
@@ -238,7 +239,7 @@
 			<button
 				onclick={runDiff}
 				disabled={!diffSnapA || !diffSnapB || diffLoading}
-				class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500 disabled:opacity-40 transition-colors"
+				class="rounded-lg bg-primary px-4 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-40 transition-colors"
 			>
 				{diffLoading ? 'Computing…' : 'Compare'}
 			</button>
@@ -246,7 +247,7 @@
 	</div>
 
 	{#if diffError}
-	<div class="rounded-lg border border-red-700 bg-red-900/30 px-4 py-3 text-sm text-red-300">{diffError}</div>
+	<div role="alert" class="rounded-lg border border-red-700 bg-red-900/30 px-4 py-3 text-sm text-red-300">{diffError}</div>
 	{/if}
 
 	{#if diffResult}
@@ -257,41 +258,41 @@
 	<div class="space-y-2">
 		<h2 class="font-semibold text-sm text-gray-300">Snapshot History</h2>
 		{#each branchSnapshots as snap, i}
-		<div class="flex items-start gap-4 rounded-xl border border-gray-800 bg-gray-900 p-4">
+		<div class="flex items-start gap-4 rounded-xl border border-edge bg-surface p-4">
 			<div class="flex flex-col items-center">
-				<div class="h-3 w-3 rounded-full bg-indigo-500"></div>
+				<div class="h-3 w-3 rounded-full bg-primary-hover"></div>
 				{#if i < branchSnapshots.length - 1}
-				<div class="mt-1 w-0.5 flex-1 bg-gray-800" style="min-height:2rem"></div>
+				<div class="mt-1 w-0.5 flex-1 bg-raised" style="min-height:2rem"></div>
 				{/if}
 			</div>
 			<div class="min-w-0 flex-1">
 				<div class="flex flex-wrap items-center gap-2">
-					<code class="rounded bg-gray-800 px-2 py-0.5 text-xs font-mono text-indigo-300">
+					<code class="rounded bg-raised px-2 py-0.5 text-xs font-mono text-primary-data">
 						{shortHash(snap.snapshot_hash)}
 					</code>
 					{#if snap.message}
-					<span class="font-medium">{snap.message}</span>
+					<span class="min-w-0 wrap-break-word font-medium">{snap.message}</span>
 					{:else}
-					<span class="text-gray-500 italic">no message</span>
+					<span class="text-ink-soft italic">no message</span>
 					{/if}
 					{#if snap.parent_id === null}
 					<span class="rounded-full bg-emerald-900/50 px-2 py-0.5 text-xs text-emerald-400">initial</span>
 					{/if}
 				</div>
-				<p class="mt-1 text-xs text-gray-500">
+				<p class="mt-1 text-xs text-ink-soft">
 					{snap.row_count} rows · {fmt(snap.created_at)}
 				</p>
 			</div>
 			<button
 				onclick={() => { diffSnapB = snap.id; }}
-				class="shrink-0 rounded px-2 py-1 text-xs text-gray-500 hover:bg-gray-800 hover:text-gray-300"
+				class="shrink-0 rounded px-2 py-1 text-xs text-ink-soft hover:bg-raised hover:text-gray-300"
 				title="Set as diff target"
 			>
 				→ diff
 			</button>
 		</div>
 		{:else}
-		<p class="text-sm text-gray-500">No snapshots on this branch yet.</p>
+		<p class="text-sm text-ink-soft">No snapshots on this branch yet.</p>
 		{/each}
 	</div>
 </div>
@@ -300,17 +301,17 @@
 {:else if tab === 'branches'}
 <div class="space-y-4">
 	<!-- Create branch -->
-	<div class="rounded-xl border border-gray-800 bg-gray-900 p-4">
+	<div class="rounded-xl border border-edge bg-surface p-4">
 		<h2 class="mb-3 font-semibold text-sm text-gray-300">New Branch</h2>
 		<div class="flex flex-wrap gap-3">
 			<input
 				bind:value={newBranchName}
 				placeholder="Branch name"
-				class="flex-1 min-w-40 rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
+				class="flex-1 min-w-40 rounded-lg border border-edge-strong bg-raised px-3 py-2 text-sm placeholder-ink-soft focus:border-primary-hover focus:outline-none"
 			/>
 			<select
 				bind:value={newBranchFrom}
-				class="flex-1 min-w-40 rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+				class="flex-1 min-w-40 rounded-lg border border-edge-strong bg-raised px-3 py-2 text-sm focus:border-primary-hover focus:outline-none"
 			>
 				<option value="">From snapshot (optional)</option>
 				{#each snapshots as s}
@@ -320,7 +321,7 @@
 			<button
 				onclick={createBranch}
 				disabled={creatingBranch || !newBranchName.trim()}
-				class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium hover:bg-indigo-500 disabled:opacity-40 transition-colors"
+				class="rounded-lg bg-primary px-4 py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-40 transition-colors"
 			>
 				{creatingBranch ? 'Creating…' : 'Create'}
 			</button>
@@ -330,27 +331,27 @@
 	<!-- Branch list -->
 	<div class="space-y-2">
 		{#each branches as b}
-		<div class="flex items-center justify-between rounded-xl border border-gray-800 bg-gray-900 p-4">
+		<div class="flex items-center justify-between rounded-xl border border-edge bg-surface p-4">
 			<div>
-				<div class="flex items-center gap-2">
-					<span class="font-medium">{b.name}</span>
+				<div class="flex items-center gap-2 min-w-0">
+					<span class="min-w-0 wrap-break-word font-medium">{b.name}</span>
 					{#if b.name === 'main'}
-					<span class="rounded-full bg-indigo-900/50 px-2 py-0.5 text-xs text-indigo-400">default</span>
+					<span class="rounded-full bg-indigo-900/50 px-2 py-0.5 text-xs text-primary-link">default</span>
 					{/if}
 				</div>
 				{#if b.head_snapshot_id}
 				{@const headSnap = snapshots.find(s => s.id === b.head_snapshot_id)}
-				<p class="mt-0.5 text-xs text-gray-500">
-					HEAD: <code class="text-indigo-300">{shortHash(b.head_snapshot_id)}</code>
+				<p class="mt-0.5 text-xs text-ink-soft">
+					HEAD: <code class="text-primary-data">{shortHash(b.head_snapshot_id)}</code>
 					{#if headSnap} · {headSnap.message ?? 'no message'} · {headSnap.row_count} rows{/if}
 				</p>
 				{:else}
-				<p class="mt-0.5 text-xs text-gray-600">No commits yet</p>
+				<p class="mt-0.5 text-xs text-ink-soft">No commits yet</p>
 				{/if}
 			</div>
 			<button
 				onclick={() => { activeBranch = b; tab = 'history'; }}
-				class="rounded px-3 py-1 text-xs text-gray-400 hover:bg-gray-800 hover:text-gray-200"
+				class="rounded px-3 py-1 text-xs text-ink-soft hover:bg-raised hover:text-gray-200"
 			>
 				View
 			</button>
@@ -362,24 +363,30 @@
 <!-- ─── Upload tab ───────────────────────────────────────────────────────── -->
 {:else if tab === 'upload'}
 <div class="max-w-xl space-y-4">
-	<div class="rounded-xl border border-gray-800 bg-gray-900 p-5">
+	<div class="rounded-xl border border-edge bg-surface p-5">
 		<h2 class="mb-4 font-semibold">Commit New Snapshot</h2>
-		<p class="mb-4 text-sm text-gray-400">
-			Uploading to branch <span class="font-medium text-indigo-300">{activeBranch?.name ?? '—'}</span>.
+		<p class="mb-4 text-sm text-ink-soft">
+			Uploading to branch <span class="font-medium text-primary-data">{activeBranch?.name ?? '—'}</span>.
 		</p>
 
 		<!-- Drop zone -->
 		<div
 			class="mb-4 rounded-xl border-2 border-dashed p-8 text-center transition-colors cursor-pointer"
-			class:border-indigo-500={dragOver}
-			class:border-gray-700={!dragOver}
+			class:border-primary-hover={dragOver}
+			class:border-edge-strong={!dragOver}
 			ondragover={(e) => { e.preventDefault(); dragOver = true; }}
 			ondragleave={() => { dragOver = false; }}
 			ondrop={handleDrop}
 			onclick={() => document.getElementById('csv-input')?.click()}
 			role="button"
 			tabindex="0"
-			onkeydown={(e) => e.key === 'Enter' && document.getElementById('csv-input')?.click()}
+			aria-label="Upload a CSV file: drop a file here, or press Enter or Space to browse"
+			onkeydown={(e) => {
+				if (e.key === 'Enter' || e.key === ' ') {
+					e.preventDefault();
+					document.getElementById('csv-input')?.click();
+				}
+			}}
 		>
 			<input
 				id="csv-input"
@@ -389,33 +396,33 @@
 				onchange={(e) => { uploadFile = (e.target as HTMLInputElement).files?.[0] ?? null; }}
 			/>
 			{#if uploadFile}
-			<p class="text-indigo-300 font-medium">{uploadFile.name}</p>
-			<p class="mt-1 text-xs text-gray-500">{(uploadFile.size / 1024).toFixed(1)} KB</p>
+			<p class="text-primary-data font-medium">{uploadFile.name}</p>
+			<p class="mt-1 text-xs text-ink-soft">{(uploadFile.size / 1024).toFixed(1)} KB</p>
 			{:else}
-			<p class="text-gray-400">Drop a CSV here or click to browse</p>
-			<p class="mt-1 text-xs text-gray-600">Max 100 MB</p>
+			<p class="text-ink-soft">Drop a CSV here or click to browse</p>
+			<p class="mt-1 text-xs text-ink-soft">Max 100 MB</p>
 			{/if}
 		</div>
 
 		<input
 			bind:value={uploadMessage}
 			placeholder="Commit message (optional)"
-			class="mb-4 w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
+			class="mb-4 w-full rounded-lg border border-edge-strong bg-raised px-3 py-2 text-sm placeholder-ink-soft focus:border-primary-hover focus:outline-none"
 		/>
 
 		<button
 			onclick={uploadSnapshot}
 			disabled={!uploadFile || uploading}
-			class="w-full rounded-lg bg-indigo-600 py-2 text-sm font-medium hover:bg-indigo-500 disabled:opacity-40 transition-colors"
+			class="w-full rounded-lg bg-primary py-2 text-sm font-medium hover:bg-primary-hover disabled:opacity-40 transition-colors"
 		>
 			{uploading ? 'Committing…' : 'Commit Snapshot'}
 		</button>
 
 		{#if uploadSuccess}
-		<div class="mt-3 rounded-lg border border-emerald-700 bg-emerald-900/30 px-4 py-3 text-sm text-emerald-300">{uploadSuccess}</div>
+		<div role="status" class="mt-3 rounded-lg border border-emerald-700 bg-emerald-900/30 px-4 py-3 text-sm text-emerald-300">{uploadSuccess}</div>
 		{/if}
 		{#if uploadError}
-		<div class="mt-3 rounded-lg border border-red-700 bg-red-900/30 px-4 py-3 text-sm text-red-300">{uploadError}</div>
+		<div role="alert" class="mt-3 rounded-lg border border-red-700 bg-red-900/30 px-4 py-3 text-sm text-red-300">{uploadError}</div>
 		{/if}
 	</div>
 </div>

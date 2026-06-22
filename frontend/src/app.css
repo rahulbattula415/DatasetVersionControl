@@ -1,1 +1,72 @@
 @import "tailwindcss";
+
+/*
+ * Semantic design tokens (see DESIGN.md). These map DatasetVC's named roles to
+ * Tailwind utilities: `bg-surface`, `text-ink`, `border-edge`, `bg-primary`,
+ * etc. Rebranding the product is now a single edit here — the brand primary is
+ * no longer hard-coded across components. Values are OKLCH-equivalent hex kept
+ * identical to the prior Tailwind scale, so the migration is pixel-for-pixel.
+ *
+ * Out of scope by design: the diff palette (emerald/red/amber) and translucent
+ * status fills stay on Tailwind's scale — they carry git-diff semantics, not
+ * brand identity, and tokenizing every shade/opacity would be over-abstraction.
+ */
+@theme {
+	/* Brand primary (indigo family) */
+	--color-primary: #4f46e5; /* indigo-600 — actions, the one signal color */
+	--color-primary-hover: #6366f1; /* indigo-500 — hover/active/focus/underline */
+	--color-primary-link: #818cf8; /* indigo-400 — inline links, wordmark */
+	--color-primary-data: #a5b4fc; /* indigo-300 — hashes, keys, data identity */
+
+	/* Neutral surfaces & ink (cool-gray stack) */
+	--color-canvas: #030712; /* gray-950 — app body, bottom of the stack */
+	--color-surface: #111827; /* gray-900 — cards, header, table heads */
+	--color-raised: #1f2937; /* gray-800 — inputs, chips, hover fills */
+	--color-edge: #1f2937; /* gray-800 — borders/dividers (the hairline) */
+	--color-edge-strong: #374151; /* gray-700 — form-control strokes */
+	--color-ink: #f3f4f6; /* gray-100 — primary text */
+	--color-ink-soft: #9ca3af; /* gray-400 — the muted floor (AA on every surface) */
+}
+
+/*
+ * Unlayered base rules — these intentionally sit outside Tailwind's @layer
+ * cascade so they win over utilities like `focus:outline-none`.
+ */
+
+/* Visible keyboard focus on every interactive element. Mouse focus is
+   unaffected (:focus-visible only matches keyboard/AT navigation), so this
+   restores a ring even on inputs that set `focus:outline-none`. */
+:focus-visible {
+	outline: 2px solid #818cf8; /* indigo-400 — clears AA contrast on all surfaces */
+	outline-offset: 2px;
+	border-radius: 4px;
+}
+
+/* Never leave an element with no focus affordance. */
+:focus:not(:focus-visible) {
+	outline: none;
+}
+
+/* Touch targets: only enlarge for coarse pointers (touch/stylus) so the
+   pointer-fine desktop UI stays compact. Native buttons/selects keep their
+   content vertically centered, so a min-height is all that's needed. */
+@media (pointer: coarse) {
+	button,
+	[role="button"],
+	select {
+		min-height: 44px;
+	}
+}
+
+/* Honor reduced-motion: collapse the spinner, transitions, and any motion to
+   near-instant. Required for every animation in the app. */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+}
