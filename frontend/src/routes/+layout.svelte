@@ -4,6 +4,10 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { token, auth } from '$lib/api';
+	import { dev } from '$app/environment';
+	import { injectAnalytics } from '@vercel/analytics/sveltekit';
+
+	injectAnalytics({ mode: dev ? 'development' : 'production' });
 
 	let { children } = $props();
 
